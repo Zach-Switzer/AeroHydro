@@ -522,97 +522,155 @@ def gap_chord_6(gap,Lift_percent_tot_6,Lift_mono):
     pyplot.ylim(75, 105);
 
 #---------------------------------------------------------#
-#---------create the linear system for the biplane--------#
+#--------create the linear system for the triplane--------#
 #---------------------------------------------------------#
+
+def create_triplane (x_foil, y_foil, x_n1,y_gap,lower_panels_bi):
+    x_t_1, y_t_1 = translate_geo(x_foil, y_foil, x_n1, y_gap)
+    x_t_2, y_t_2 = translate_geo(x_foil, y_foil, x_n1, 2*y_gap)
+    N = len(x_foil)
+    mid_panels = define_panels(x_t_1, y_t_1, N-1)
+    top_panels = define_panels(x_t_2, y_t_2, N-1)
+    panelS_tri = numpy.concatenate((lower_panels_bi, mid_panels,top_panels ))
+    return x_t_1, y_t_1, x_t_2, y_t_2, mid_panels, top_panels, panelS_tri
+
+# plot the geometry
+def plot_triplane_panels(x_bot, y_bot,x_mid, y_mid,x_top, y_top,bot_panels,mid_panels,top_panels):
+    # plot discretized geometry
+    width = 6
+    pyplot.figure(figsize=(14, 6))
+    pyplot.title('Triplane with Gap/Chord = 1.25')
+    pyplot.grid()
+    pyplot.xlabel('x', fontsize=16)
+    pyplot.ylabel('y', fontsize=16)
+    pyplot.plot(x_bot, y_bot, color='k', linestyle='-', linewidth=2)
+    pyplot.plot(numpy.append([panel.xa for panel in bot_panels], bot_panels[0].xa),
+            numpy.append([panel.ya for panel in bot_panels], bot_panels[0].ya),
+            linestyle='-', linewidth=1, marker='o', markersize=6, color='#CD2305')
+    pyplot.plot(x_mid, y_mid, color='k', linestyle='-', linewidth=2)
+    pyplot.plot(numpy.append([panel.xa for panel in mid_panels], mid_panels[0].xa),
+            numpy.append([panel.ya for panel in mid_panels], mid_panels[0].ya),
+            linestyle='-', linewidth=1, marker='o', markersize=6, color='#CD2305')
+    pyplot.plot(x_top, y_top, color='k', linestyle='-', linewidth=2)
+    pyplot.plot(numpy.append([panel.xa for panel in top_panels], top_panels[0].xa),
+            numpy.append([panel.ya for panel in top_panels], top_panels[0].ya),
+            linestyle='-', linewidth=1, marker='o', markersize=6, color='#CD2305')
+    pyplot.axis('scaled', adjustable='box')
+    pyplot.xlim(-0.1, 1.1)
+    pyplot.ylim(-0.2, 2.75);
 
 # create the kutta conditions
 # 1st kutta condition will go from 1 to (N-1)/3
 # 2nd kutta condition will go from 1+(N-1)/3 to 2(N-1)/3
 # 3rd kutta condition will go from 1+2(N-1)/3 to (N-1)
 def tri_kutta_condition_1(A_source, B_vortex, N):
-    b = numpy.empty((1,A_source.shape[0]+2), dtype=float)
-    
+    b = numpy.empty((1,A_source.shape[0]+3), dtype=float)
+    num1 = int(((N-1)/3))
+    num2 = int((2*(N-1)/3))
     # i = row that we need to work with
-    b[:,:-2] = B_vortex[0,:] + B_vortex[(N-2),:]
-    b[:,-2] = - numpy.sum(A_source[0,:-(N-1)]) - numpy.sum(A_source[(N-2),:-(N-1)])
-    b[:,-1] = - numpy.sum(A_source[0,-(N-1):]) - numpy.sum(A_source[(N-2),-(N-1):])
+    b[:,:-3] = B_vortex[0,:] + B_vortex[num1,:]
+    b[:,-3] = - numpy.sum(A_source[0,:num1]) - numpy.sum(A_source[num1,:num1])
+    b[:,-2] = - numpy.sum(A_source[0,num1:num2]) - numpy.sum(A_source[num1,num1:num2])
+    b[:,-1] = - numpy.sum(A_source[0,num2:]) - numpy.sum(A_source[num1,num2:])
     
     return b 
 
 def tri_kutta_condition_2(A_source, B_vortex, N):
-    b = numpy.empty((1,A_source.shape[0]+2), dtype=float)
-    
+    b = numpy.empty((1,A_source.shape[0]+3), dtype=float)
+    num1 = int(((N-1)/3))
+    num2 = int((2*(N-1)/3))
     # i = row that we need to work with
-    b[:,:-2] = B_vortex[(N-1),:] + B_vortex[-1,:]
-    b[:,-2] = - numpy.sum(A_source[(N-1),:-(N-1)]) - numpy.sum(A_source[-1,:-(N-1)])
-    b[:,-1] = - numpy.sum(A_source[(N-1),-(N-1):]) - numpy.sum(A_source[-1,-(N-1):])
+    b[:,:-3] = B_vortex[num1+1,:] + B_vortex[num2,:]
+    b[:,-3] = - numpy.sum(A_source[num1+1,:num1]) - numpy.sum(A_source[num2,:num1])
+    b[:,-2] = - numpy.sum(A_source[num1+1,num1:num2]) - numpy.sum(A_source[num2,num1:num2])
+    b[:,-1] = - numpy.sum(A_source[num1+1,num2:]) - numpy.sum(A_source[num2,num2:])
     
     return b 
 
 def tri_kutta_condition_3(A_source, B_vortex, N):
-    b = numpy.empty((1,A_source.shape[0]+2), dtype=float)
-    
+    b = numpy.empty((1,A_source.shape[0]+3), dtype=float)
+    num1 = int(((N-1)/3))
+    num2 = int((2*(N-1)/3))
     # i = row that we need to work with
-    b[:,:-2] = B_vortex[(N-1),:] + B_vortex[-1,:]
-    b[:,-2] = - numpy.sum(A_source[(N-1),:-(N-1)]) - numpy.sum(A_source[-1,:-(N-1)])
-    b[:,-1] = - numpy.sum(A_source[(N-1),-(N-1):]) - numpy.sum(A_source[-1,-(N-1):])
+    b[:,:-3] = B_vortex[num2+1,:] + B_vortex[-1,:]
+    b[:,-3] = - numpy.sum(A_source[num2+1,:num1]) - numpy.sum(A_source[-1,:num1])
+    b[:,-2] = - numpy.sum(A_source[num2+1,num1:num2]) - numpy.sum(A_source[-1,num1:num2])
+    b[:,-1] = - numpy.sum(A_source[num2+1,num2:]) - numpy.sum(A_source[-1,num2:])
     
     return b 
 
 # create the singularity matrix (an amalgamation of the kutta condition, source term, and the vortex term)
-def build_singularity_matrix(A_source, B_vortex, N):
-
-    A = numpy.empty((A_source.shape[0] + 2, A_source.shape[1] + 2), dtype=float)
+def build_singularity_matrix_tri(A_source, B_vortex, N):
+    num1 = int(((N-1)/3))
+    num2 = int((2*(N-1)/3))
+    A = numpy.empty((A_source.shape[0] + 3, A_source.shape[1] + 3), dtype=float)
     # source contribution matrix
-    A[:-2, :-2] = A_source
+    A[:-3, :-3] = A_source
     # vortex contribution array 1
     panda=numpy.empty((B_vortex.shape[0], 1), dtype=float)
     for i in range (len(B_vortex)):
-        panda[i,:]=numpy.sum(B_vortex[i,:-(N-1)])
-    A[:-2, -2] = panda[:,0]
+        panda[i,:]=numpy.sum(B_vortex[i,:num1])
+    A[:-3, -3] = panda[:,0]
     # vortex contribution array 2
     dolphin=numpy.empty((B_vortex.shape[0], 1), dtype=float)
     for i in range (len(B_vortex)):
-        dolphin[i,:]=numpy.sum(B_vortex[i,-(N-1):])
-    A[:-2, -1] = dolphin[:,0]
+        dolphin[i,:]=numpy.sum(B_vortex[i,num1:num2])
+    A[:-3, -2] = dolphin[:,0]
+    # vortex contribution array 3
+    tiger=numpy.empty((B_vortex.shape[0], 1), dtype=float)
+    for i in range (len(B_vortex)):
+        tiger[i,:]=numpy.sum(B_vortex[i,num2:])
+    A[:-3, -1] = tiger[:,0]
     # Kutta condition #1
-    A[-2, :] = kutta_condition_1(A_source, B_vortex, N)
+    A[-3, :] = tri_kutta_condition_1(A_source, B_vortex, N)
     # Kutta condition #2
-    A[-1, :] = kutta_condition_2(A_source, B_vortex, N)
+    A[-2, :] = tri_kutta_condition_2(A_source, B_vortex, N)
+    # Kutta condition #2
+    A[-1, :] = tri_kutta_condition_3(A_source, B_vortex, N)
     return A
 
 # create the freestream
-def build_freestream_rhs(panelS, freestream, N):
-
-    b = numpy.empty(len(panelS) + 2, dtype=float)
+def build_freestream_rhs_tri(panelS, freestream, N):
+    num1 = int(((N-1)/3))
+    num2 = int((2*(N-1)/3))
+    b = numpy.empty(len(panelS) + 3, dtype=float)
     # freestream contribution on each panel
     for i, panel in enumerate(panelS):
         b[i] = -freestream.u_inf * numpy.cos(freestream.alpha - panel.beta)
     # freestream contribution on the Kutta condition
-    b[-2] = -freestream.u_inf * (numpy.sin(freestream.alpha - panelS[0].beta) +
-                                 numpy.sin(freestream.alpha - panelS[(N-2)].beta) )
-    b[-1] = -freestream.u_inf * (numpy.sin(freestream.alpha - panelS[N-1].beta) +
+    b[-3] = -freestream.u_inf * (numpy.sin(freestream.alpha - panelS[0].beta) +
+                                 numpy.sin(freestream.alpha - panelS[num1].beta) )
+    b[-2] = -freestream.u_inf * (numpy.sin(freestream.alpha - panelS[num1+1].beta) +
+                                 numpy.sin(freestream.alpha - panelS[num2].beta) )
+    b[-1] = -freestream.u_inf * (numpy.sin(freestream.alpha - panelS[num2+1].beta) +
                                  numpy.sin(freestream.alpha - panelS[-1].beta) )
     return b
 
-def compute_tangential_velocity(panelS, freestream, gamma, A_source, B_vortex, N):
-    
-    A = numpy.empty((len(panelS), len(panelS) + 2), dtype=float)
+def compute_tangential_velocity_tri(panelS, freestream, gamma, A_source, B_vortex, N):
+    num1 = int(((N-1)/3))
+    num2 = int((2*(N-1)/3))
+    A = numpy.empty((len(panelS), len(panelS) + 3), dtype=float)
     
     # B_vortex contribution
-    A[:, :-2] = B_vortex
+    A[:, :-3] = B_vortex
 
-    # A_source contribution from foil
+    # A_source contribution from bottom
     pangolin=numpy.empty((A_source.shape[0], 1), dtype=float)
     for i in range (len(A_source)):
-        pangolin[i,:]=-numpy.sum(A_source[i,:-(N-1)])
-    A[:, -2] = pangolin[:,0]
+        pangolin[i,:]=-numpy.sum(A_source[i,:num1])
+    A[:, -3] = pangolin[:,0]
 
-    # A_source contribution from flap
+    # A_source contribution from middle
     lemur=numpy.empty((A_source.shape[0], 1), dtype=float)
     for i in range (len(A_source)):
-        lemur[i,:]=-numpy.sum(A_source[i,-(N-1):])
-    A[:, -1] = lemur[:,0]
+        lemur[i,:]=-numpy.sum(A_source[i,num1:num2])
+    A[:, -2] = lemur[:,0]
+    
+    # A_source contribution from middle
+    sea=numpy.empty((A_source.shape[0], 1), dtype=float)
+    for i in range (len(A_source)):
+        sea[i,:]=-numpy.sum(A_source[i,num2:])
+    A[:, -1] = sea[:,0]
     
     # freestream contribution
     b = freestream.u_inf * numpy.sin([freestream.alpha - panel.beta 
@@ -626,7 +684,7 @@ def compute_tangential_velocity(panelS, freestream, gamma, A_source, B_vortex, N
         panel.vt = tangential_velocities[i]
         
 # get the pressure coefficients
-def compute_pressure_coefficient(panels, freestream):
+def compute_pressure_coefficient_tri(panels, freestream):
 
     for panel in panels:
         panel.cp = 1.0 - (panel.vt / freestream.u_inf)**2
@@ -635,15 +693,15 @@ def compute_pressure_coefficient(panels, freestream):
 #---------create the function to solve the system and get the lift--------#
 #-------------------------------------------------------------------------#
 
-def solve_biplane(panelS, freestream, N): # fix foil_panelS
+def solve_triplane(panelS, freestream, N): # fix foil_panelS
     
     # find the source and vortex contributions
     A_source = source_contribution_normal(panelS)
     B_vortex = vortex_contribution_normal(panelS)
     
     # build the singularity matrix
-    A = build_singularity_matrix(A_source, B_vortex, N)
-    b = build_freestream_rhs(panelS, freestream, N)
+    A = build_singularity_matrix_tri(A_source, B_vortex, N)
+    b = build_freestream_rhs_tri(panelS, freestream, N)
     
     # solve for the singularity matrices
     strengths = numpy.linalg.solve(A,b)
@@ -653,55 +711,64 @@ def solve_biplane(panelS, freestream, N): # fix foil_panelS
         panel.sigma = strengths[i]
         
     # store the circulation density
-    gamma = strengths[-2:]
+    gamma = strengths[-3:]
     
     # tangential velocity at each panel center.
-    compute_tangential_velocity(panelS, freestream, gamma, A_source, B_vortex, N)
+    compute_tangential_velocity_tri(panelS, freestream, gamma, A_source, B_vortex, N)
     
     # surface pressure coefficient
-    compute_pressure_coefficient(panelS, freestream)
+    compute_pressure_coefficient_tri(panelS, freestream)
     
     # check that the work so far is correct => for a closed body the sum of the strengths must = 0
     accuracy = sum([panel.sigma*panel.length for panel in panelS])
-    #print('sum of singularity strengths: {:0.6f}'.format(accuracy))
+    print('sum of singularity strengths: {:0.6f}'.format(accuracy))
     
     # what is the value of the lift for the system (main + flap)
     # assume that P_inf = 0, density = 1 => use bernouli's equation
     P_inf=0
     den=1
     u_inf=1.0
-    
+    num1 = int(((N-1)/3))
+    num2 = int((2*(N-1)/3))
     # the parts needed for the integral of of lift are:
     
     # tangential velocity of the panels
-    foil_vt = [panel.vt for panel in panelS[:-(N-1)]]
-    flap_vt = [panel.vt for panel in panelS[-(N-1):]]
+    bottom_vt = [panel.vt for panel in panelS[:num1]]
+    middle_vt = [panel.vt for panel in panelS[num1:num2]]
+    top_vt = [panel.vt for panel in panelS[num2:]]
     
     # length of the panels
-    foil_len = [panel.length for panel in panelS[:-(N-1)]]
-    flap_len = [panel.length for panel in panelS[-(N-1):]]
+    bottom_len = [panel.length for panel in panelS[:num1]]
+    middle_len = [panel.length for panel in panelS[num1:num2]]
+    top_len = [panel.length for panel in panelS[num2:]]
     
     # angle of the panels called n*j (beta)
-    foil_angle = [panel.beta for panel in panelS[:-(N-1)]]
-    flap_angle = [panel.beta for panel in panelS[-(N-1):]]
+    bottom_angle = [panel.beta for panel in panelS[:num1]]
+    middle_angle = [panel.beta for panel in panelS[num1:num2]]
+    top_angle = [panel.beta for panel in panelS[num2:]]
     
     # need to find the lift of the center of each panel individually and add them up
     
     # foil lift array
-    loquat = numpy.empty(N-1, dtype=float)
-    for i in range (N-1):
-        loquat[i]=-(P_inf+0.5*den*(u_inf**2-foil_vt[i]**2))*foil_len[i]*math.sin(foil_angle[i])
+    loquat = numpy.empty(num1, dtype=float)
+    for i in range (num1):
+        loquat[i]=-(P_inf+0.5*den*(u_inf**2-bottom_vt[i]**2))*bottom_len[i]*math.sin(bottom_angle[i])
         
     # flap lift array
-    mango = numpy.empty(N-1, dtype=float)
-    for i in range (N-1):
-        mango[i]=-(P_inf+0.5*den*(u_inf**2-flap_vt[i]**2))*flap_len[i]*math.sin(flap_angle[i])
+    mango = numpy.empty(num1, dtype=float)
+    for i in range (num1):
+        mango[i]=-(P_inf+0.5*den*(u_inf**2-middle_vt[i]**2))*middle_len[i]*math.sin(middle_angle[i])
+        
+    # flap lift array
+    plant = numpy.empty(num1, dtype=float)
+    for i in range (num1):
+        plant[i]=-(P_inf+0.5*den*(u_inf**2-top_vt[i]**2))*top_len[i]*math.sin(top_angle[i])
     
     #print(loquat)
     #print(mango)
     
     # summing the lift arrays and ading them up
-    L=numpy.sum(loquat)+numpy.sum(mango)
+    L=numpy.sum(loquat)+numpy.sum(mango)+numpy.sum(plant)
     #print('This is the value of the lift for the system {main+flap} for 100 panels: '+'\n'+str(L_100)+'\n')
     
     return L
