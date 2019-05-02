@@ -525,14 +525,16 @@ def gap_chord_6(gap,Lift_percent_tot_6,Lift_mono):
 #--------create the linear system for the triplane--------#
 #---------------------------------------------------------#
 
-def create_triplane (x_foil, y_foil, x_n1,y_gap,lower_panels_bi):
+def create_triplane (x_foil, y_foil, x_n1,y_gap):
     x_t_1, y_t_1 = translate_geo(x_foil, y_foil, x_n1, y_gap)
     x_t_2, y_t_2 = translate_geo(x_foil, y_foil, x_n1, 2*y_gap)
     N = len(x_foil)
+    print(N-1)
+    bot_panels = define_panels(x_foil, y_foil, N-1)
     mid_panels = define_panels(x_t_1, y_t_1, N-1)
     top_panels = define_panels(x_t_2, y_t_2, N-1)
-    panelS_tri = numpy.concatenate((lower_panels_bi, mid_panels,top_panels ))
-    return x_t_1, y_t_1, x_t_2, y_t_2, mid_panels, top_panels, panelS_tri
+    panelS_tri = numpy.concatenate((bot_panels, mid_panels,top_panels ))
+    return x_t_1, y_t_1, x_t_2, y_t_2, bot_panels, mid_panels, top_panels, panelS_tri
 
 # plot the geometry
 def plot_triplane_panels(x_bot, y_bot,x_mid, y_mid,x_top, y_top,bot_panels,mid_panels,top_panels):
@@ -560,9 +562,9 @@ def plot_triplane_panels(x_bot, y_bot,x_mid, y_mid,x_top, y_top,bot_panels,mid_p
     pyplot.ylim(-0.2, 2.75);
 
 # create the kutta conditions
-# 1st kutta condition will go from 1 to (N-1)/3
-# 2nd kutta condition will go from 1+(N-1)/3 to 2(N-1)/3
-# 3rd kutta condition will go from 1+2(N-1)/3 to (N-1)
+# 1st kutta condition will go from 1 to (N)/3
+# 2nd kutta condition will go from 1+(N)/3 to 2(N)/3
+# 3rd kutta condition will go from 1+2(N)/3 to (-1)
 def tri_kutta_condition_1(A_source, B_vortex, N):
     b = numpy.empty((1,A_source.shape[0]+3), dtype=float)
     
