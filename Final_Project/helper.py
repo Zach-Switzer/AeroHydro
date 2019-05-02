@@ -84,6 +84,50 @@ def subplots_plot_biplane_panels(x_m, y_m,x_bi_1, y_bi_1,x_bi_2, y_bi_2,x_bi_3, 
     #axs[1, 1].set_ylabel('y',fontsize=16)
     pyplot.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.3, hspace=0.3)
     
+    
+    
+#---------------------------------------------------------#
+#-------------------------------create the panels --------#
+#---------------------------------------------------------#
+
+# create the panel class
+class Panel:
+    def __init__(self, xa, ya, xb, yb):
+
+        self.xa, self.ya = xa, ya  # panel starting-point
+        self.xb, self.yb = xb, yb  # panel ending-point
+        
+        self.xc, self.yc = (xa + xb) / 2, (ya + yb) / 2  # panel center
+        self.length = numpy.sqrt((xb - xa)**2 + (yb - ya)**2)  # panel length
+        
+        # orientation of panel (angle between x-axis and panel's normal)
+        if xb - xa <= 0.0:
+            self.beta = numpy.arccos((yb - ya) / self.length)
+        elif xb - xa > 0.0:
+            self.beta = numpy.pi + numpy.arccos(-(yb - ya) / self.length)
+        
+        # panel location
+        if self.beta <= numpy.pi:
+            self.loc = 'upper'  # upper surface
+        else:
+            self.loc = 'lower'  # lower surface
+        
+        self.sigma = 0.0  # source strength
+        self.vt = 0.0  # tangential velocity
+        self.cp = 0.0  # pressure coefficient
+
+# define the panels
+def define_panels(x, y, N):
+    
+    # becuase we were given the end-points in the geometry, we don't need to create and map the circle
+    # create panels
+    panels = numpy.empty(N, dtype=object)
+    
+    for i in range(N):
+        panels[i] = Panel(x[i], y[i], x[i + 1], y[i + 1])
+    
+    return panels
+
 #---------------------------------------------------------#
 #-------create the source and vortex contributions--------#
 #---------------------------------------------------------#
@@ -445,6 +489,37 @@ def alt_monplane(panelS, freestream, N):
     gamma = strengths[-1]
     lift = gamma * sum(panel.length for panel in panelS)
     return lift
+
+#--------------------------------------------------------#
+#-------function to do everything for the biplane--------#
+#--------------------------------------------------------#
+
+def translate_geo(x_foil, y_foil, x_new, y_new):
+    x = x_foil+x_new
+    y = y_foil+y_new
+    return x,y
+
+def everything_biplane(x_m, y_m, x_n1, y_n,lower_panels_bi, freestream):
+    x_bi, y_bi = translate_geo(x_m, y_m, x_n1, y_n)
+    N = len(x_m)
+    upper_panels_bi = define_panels(x_bi, y_bi, N-1)
+    panelS_bi = numpy.concatenate((lower_panels_bi, upper_panels_bi))
+    L_bi = solve_biplane(panelS_bi, freestream, N)
+    return L_bi
+
+def gap_chord_6(gap,Lift_percent_tot_6,Lift_mono):
+    # plot the biplane info
+    # plot geometry
+    width = 5
+    pyplot.figure(figsize=(width*1.5, width))
+    pyplot.title('Gap/Chord vs Lift')
+    pyplot.grid()
+    pyplot.xlabel('Gap/Chord', fontsize=16)
+    pyplot.ylabel('Lift [%]', fontsize=16)
+    pyplot.plot(gap, Lift_percent_tot_6, color='k', linestyle='-', linewidth=2)
+    pyplot.plot(gap, Lift_mono, color='r', linestyle='-', linewidth=2)
+    pyplot.xlim(0.5, 4.0)
+    pyplot.ylim(75, 105);
 
 #---------------------------------------------------------#
 #---------create the linear system for the biplane--------#
