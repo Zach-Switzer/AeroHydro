@@ -757,7 +757,8 @@ def solve_triplane(panelS, freestream, N): # fix foil_panelS
 #-------------------------------------------------------------------------#
 #--------------------Biplane: Lift of individual wings--------------------#
 #-------------------------------------------------------------------------#
-def biplane_bottom_wing(panelS_bi, freestream, N):
+def solve_biplane_ind(panelS, freestream): # fix foil_panelS
+    N = int(len(panelS)/2)
     # find the source and vortex contributions
     A_source = source_contribution_normal(panelS)
     B_vortex = vortex_contribution_normal(panelS)
@@ -795,42 +796,175 @@ def biplane_bottom_wing(panelS_bi, freestream, N):
     # the parts needed for the integral of of lift are:
     
     # tangential velocity of the panels
-    foil_vt = [panel.vt for panel in panelS[:-(N-1)]]
-    flap_vt = [panel.vt for panel in panelS[-(N-1):]]
+    foil_vt = [panel.vt for panel in panelS[:N]]
+    flap_vt = [panel.vt for panel in panelS[N:]]
     
     # length of the panels
-    foil_len = [panel.length for panel in panelS[:-(N-1)]]
-    flap_len = [panel.length for panel in panelS[-(N-1):]]
+    foil_len = [panel.length for panel in panelS[:N]]
+    flap_len = [panel.length for panel in panelS[N:]]
     
     # angle of the panels called n*j (beta)
-    foil_angle = [panel.beta for panel in panelS[:-(N-1)]]
-    flap_angle = [panel.beta for panel in panelS[-(N-1):]]
+    foil_angle = [panel.beta for panel in panelS[:N]]
+    flap_angle = [panel.beta for panel in panelS[N:]]
     
     # need to find the lift of the center of each panel individually and add them up
     
     # foil lift array
-    loquat = numpy.empty(N-1, dtype=float)
-    for i in range (N-1):
+    loquat = numpy.empty(N, dtype=float)
+    for i in range (N):
         loquat[i]=-(P_inf+0.5*den*(u_inf**2-foil_vt[i]**2))*foil_len[i]*math.sin(foil_angle[i])
         
     # flap lift array
-    mango = numpy.empty(N-1, dtype=float)
-    for i in range (N-1):
+    mango = numpy.empty(N, dtype=float)
+    for i in range (N):
         mango[i]=-(P_inf+0.5*den*(u_inf**2-flap_vt[i]**2))*flap_len[i]*math.sin(flap_angle[i])
     
     #print(loquat)
     #print(mango)
-    
+    L_bottom = numpy.sum(loquat)
+    L_top = numpy.sum(mango)
     # summing the lift arrays and ading them up
     L=numpy.sum(loquat)+numpy.sum(mango)
     #print('This is the value of the lift for the system {main+flap} for 100 panels: '+'\n'+str(L_100)+'\n')
     
-    return L
+    return L, L_bottom, L_top
 
 def biplane_ind_wings(x_m, y_m, x_n1, y_n,lower_panels_bi, freestream):
     x_bi, y_bi = translate_geo(x_m, y_m, x_n1, y_n)
     N = len(x_m)
     upper_panels_bi = define_panels(x_bi, y_bi, N-1)
     panelS_bi = numpy.concatenate((lower_panels_bi, upper_panels_bi))
-    L_bi = solve_biplane(panelS_bi, freestream, N)
-    return L_bi
+    L_bi, L_bottom, L_top  = solve_biplane_ind(panelS_bi, freestream)
+    return L_bi, L_bottom, L_top
+
+#-------------------------------------------------------------------------#
+#--------------------Triplane: Lift of individual wings-------------------#
+#-------------------------------------------------------------------------#
+
+def solve_triplane_ind(panelS, freestream): # fix foil_panelS
+    N=int(len(panelS)/3)
+    # find the source and vortex contributions
+    A_source = source_contribution_normal(panelS)
+    B_vortex = vortex_contribution_normal(panelS)
+    
+    # build the singularity matrix
+    A = build_singularity_matrix_tri(A_source, B_vortex, N)
+    b = build_freestream_rhs_tri(panelS, freestream, N)
+    
+    # solve for the singularity matrices
+    strengths = numpy.linalg.solve(A,b)
+    
+    #store the strengths on each panel
+    for i, panel in enumerate(panelS):
+        panel.sigma = strengths[i]
+        
+    # store the circulation density
+    gamma = strengths[-3:]
+    
+    # tangential velocity at each panel center.
+    compute_tangential_velocity_tri(panelS, freestream, gamma, A_source, B_vortex, N)
+    
+    # surface pressure coefficient
+    compute_pressure_coefficient_tri(panelS, freestream)
+    
+    # check that the work so far is correct => for a closed body the sum of the strengths must = 0
+    accuracy = sum([panel.sigma*panel.length for panel in panelS])
+    #print('sum of singularity strengths: {:0.6f}'.format(accuracy))
+    
+    # what is the value of the lift for the system (main + flap)
+    # assume that P_inf = 0, density = 1 => use bernouli's equation
+    P_inf=0
+    den=1
+    u_inf=1.0
+    
+    # the parts needed for the integral of of lift are:
+    #print(N)
+    # tangential velocity of the panels
+    bottom_vt = [panel.vt for panel in panelS[:N]]
+    middle_vt = [panel.vt for panel in panelS[N:2*N-1]]
+    top_vt = [panel.vt for panel in panelS[2*N-1:]]
+    #print(len(bottom_vt))
+    #print(len(middle_vt))
+    #print(len(top_vt))
+    
+    # length of the panels
+    bottom_len = [panel.length for panel in panelS[:N]]
+    middle_len = [panel.length for panel in panelS[N:2*N-1]]
+    top_len = [panel.length for panel in panelS[2*N-1:]]
+    #print(len(bottom_len))
+    #print(len(middle_len))
+    #print(len(top_len))
+    
+    # angle of the panels called n*j (beta)
+    bottom_angle = [panel.beta for panel in panelS[:N]]
+    middle_angle = [panel.beta for panel in panelS[N:-N]]
+    top_angle = [panel.beta for panel in panelS[-N:]]
+    #print(len(bottom_angle))
+    #print(len(middle_angle))
+    #print(len(top_angle))
+    
+    # need to find the lift of the center of each panel individually and add them up
+    
+    # foil lift array
+    loquat = numpy.empty(len(bottom_vt), dtype=float)
+    for i in range (len(bottom_vt)):
+        loquat[i]=-(P_inf+0.5*den*(u_inf**2-bottom_vt[i]**2))*bottom_len[i]*math.sin(bottom_angle[i])
+        
+    # flap lift array
+    mango = numpy.empty(len(middle_len), dtype=float)
+    for i in range (len(middle_len)):
+        mango[i]=-(P_inf+0.5*den*(u_inf**2-middle_vt[i]**2))*middle_len[i]*math.sin(middle_angle[i])
+        
+    # flap lift array
+    plant = numpy.empty(len(top_angle), dtype=float)
+    for i in range (len(top_angle)):
+        plant[i]=-(P_inf+0.5*den*(u_inf**2-top_vt[i]**2))*top_len[i]*math.sin(top_angle[i])
+    
+    #print(loquat)
+    #print(mango)
+    L_bottom = numpy.sum(loquat)
+    L_middle = numpy.sum(mango)
+    L_top = numpy.sum(plant)
+    
+    # summing the lift arrays and ading them up
+    L=numpy.sum(loquat)+numpy.sum(mango)+numpy.sum(plant)
+    #print('This is the value of the lift for the system {main+flap} for 100 panels: '+'\n'+str(L_100)+'\n')
+    
+    return L, L_bottom, L_middle, L_top
+
+# make into subplots!!!!!!!!
+
+def plot_ind_wings(positions_bi, percents_bi, positions_tri, percents_tri):
+    f, (ax1, ax2) = pyplot.subplots(1, 2, figsize=(2*7.0, 5.0),sharex=False,sharey=False)
+    ax1.set_title('Biplane')
+    ax2.set_title('Triplane')
+    ax1.set_xlabel('Wing', fontsize=16)
+    ax1.set_ylabel('Lift %', fontsize=16)
+    ax2.set_xlabel('Wing', fontsize=16)
+    ax2.set_ylabel('Lift %', fontsize=16)
+    ax1.bar(positions_bi, percents_bi)
+    ax1.bar(positions_tri, percents_tri)
+
+# plot the % lifts of each individual wing 
+def plot_ind_wings_bi(positions, percents):
+    # plot discretized geometry
+    pyplot.figure(figsize=(5, 5))
+    pyplot.title('Triplane with Gap/Chord = 1.25')
+    #pyplot.grid()
+    pyplot.xlabel('x', fontsize=16)
+    pyplot.ylabel('y', fontsize=16)
+    pyplot.bar(positions, percents)
+    #pyplot.xlim(-0.1, 1.1)
+    #pyplot.ylim(-0.2, 2.75);
+    
+# plot the % lifts of each individual wing 
+def plot_ind_wings_tri(positions, percents):
+    # plot discretized geometry
+    pyplot.figure(figsize=(5, 5))
+    pyplot.title('Triplane with Gap/Chord = 1.25')
+    #pyplot.grid()
+    pyplot.xlabel('x', fontsize=16)
+    pyplot.ylabel('y', fontsize=16)
+    pyplot.bar(positions, percents)
+    #pyplot.xlim(-0.1, 1.1)
+    #pyplot.ylim(-0.2, 2.75);
