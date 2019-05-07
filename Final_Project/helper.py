@@ -506,7 +506,7 @@ def create_triplane (x_foil, y_foil, x_n1,y_gap):
     x_t_1, y_t_1 = translate_geo(x_foil, y_foil, x_n1, y_gap)
     x_t_2, y_t_2 = translate_geo(x_foil, y_foil, x_n1, 2*y_gap)
     N = len(x_foil)
-    print(N-1)
+    #print(N-1)
     bot_panels = define_panels(x_foil, y_foil, N-1)
     mid_panels = define_panels(x_t_1, y_t_1, N-1)
     top_panels = define_panels(x_t_2, y_t_2, N-1)
@@ -835,7 +835,7 @@ def biplane_ind_wings(x_m, y_m, x_n1, y_n,lower_panels_bi, freestream):
     upper_panels_bi = define_panels(x_bi, y_bi, N-1)
     panelS_bi = numpy.concatenate((lower_panels_bi, upper_panels_bi))
     L_bi, L_bottom, L_top  = solve_biplane_ind(panelS_bi, freestream)
-    return L_bi, L_bottom, L_top
+    return L_bi, L_bottom, L_top, x_bi, y_bi
 
 #-------------------------------------------------------------------------#
 #--------------------Triplane: Lift of individual wings-------------------#
@@ -934,7 +934,7 @@ def solve_triplane_ind(panelS, freestream): # fix foil_panelS
 
 # make into subplots!!!!!!!!
 
-def plot_ind_wings(positions_bi, percents_bi, positions_tri, percents_tri):
+def plot_ind_wings(positions_bi, percents_bi, positions_tri, percents_tri, G_bi_bottom, G_bi_top,G_tri_bottom,G_tri_middle,G_tri_top ):
     f, (ax1, ax2) = pyplot.subplots(1, 2, figsize=(2*7.0, 5.0),sharex=False,sharey=False)
     ax1.set_title('Biplane')
     ax2.set_title('Triplane')
@@ -942,29 +942,22 @@ def plot_ind_wings(positions_bi, percents_bi, positions_tri, percents_tri):
     ax1.set_ylabel('Lift %', fontsize=16)
     ax2.set_xlabel('Wing', fontsize=16)
     ax2.set_ylabel('Lift %', fontsize=16)
-    ax1.bar(positions_bi, percents_bi)
-    ax1.bar(positions_tri, percents_tri)
+    ax1.bar(positions_bi[:2], percents_bi, color=['y','y'])
+    ax1.bar(positions_bi[2], G_bi_bottom, color='m', alpha = 0.5)
+    ax1.bar(positions_bi[3], G_bi_top, color='m',alpha = 0.5)
+    ax2.bar(positions_tri[:3], percents_tri, color=['y','y','y'])
+    ax2.bar(positions_tri[3], G_tri_bottom, color='m', alpha = 0.5)
+    ax2.bar(positions_tri[4], G_tri_middle, color='m', alpha = 0.5)
+    ax2.bar(positions_tri[5], G_tri_top, color='m',alpha = 0.5)
+    ax1.set_xticks(positions_bi)
+    ax1.set_xticklabels(('our \n bottom wing','our \n upper wing', 'Grant\'s \n bottom wing','Grant\'s \n upper wing'))
+    ax2.set_xticks(positions_tri)
+    ax2.set_xticklabels(('our \n bottom \n wing','our \n middle \n wing', 'our \n upper \n wing',\
+                     'Grant\'s \n bottom \n wing','Grant\'s \n middle \n wing', 'Grant\'s \n upper \n wing'))
+    ax1.set_ylim(0,100);
+    ax2.set_ylim(0,100);
 
-# plot the % lifts of each individual wing 
-def plot_ind_wings_bi(positions, percents):
-    # plot discretized geometry
-    pyplot.figure(figsize=(5, 5))
-    pyplot.title('Triplane with Gap/Chord = 1.25')
-    #pyplot.grid()
-    pyplot.xlabel('x', fontsize=16)
-    pyplot.ylabel('y', fontsize=16)
-    pyplot.bar(positions, percents)
-    #pyplot.xlim(-0.1, 1.1)
-    #pyplot.ylim(-0.2, 2.75);
-    
-# plot the % lifts of each individual wing 
-def plot_ind_wings_tri(positions, percents):
-    # plot discretized geometry
-    pyplot.figure(figsize=(5, 5))
-    pyplot.title('Triplane with Gap/Chord = 1.25')
-    #pyplot.grid()
-    pyplot.xlabel('x', fontsize=16)
-    pyplot.ylabel('y', fontsize=16)
-    pyplot.bar(positions, percents)
-    #pyplot.xlim(-0.1, 1.1)
-    #pyplot.ylim(-0.2, 2.75);
+def plot_bi_check(x_m, y_m, x_bi, y_bi):
+    pyplot.figure()
+    pyplot.plot(x_m, y_m)
+    pyplot.plot(x_bi, y_bi)
