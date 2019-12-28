@@ -2,6 +2,6 @@
 
 To run the final project:
 
-- Download or clone the repository Zach-Switzer/AeroHydro
-- Move the folder "Final Project" to a Jupyter Notebook
-- Open and run the file "Monoplanes_Biplanes_and_Triplanes.ipynb"
+1. Download or clone the repository Zach-Switzer/AeroHydro
+2. Move the folder "Final Project" to a Jupyter Notebook
+3. Open and run the file "Monoplanes_Biplanes_and_Triplanes.ipynb"
